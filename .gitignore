@@ -5,3 +5,4 @@ vosk-model-small-en-us-0.15/
 __pycache__
 log.txt
 output.txt
+.env

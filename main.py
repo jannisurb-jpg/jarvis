@@ -33,6 +33,7 @@ from talkingLogic import createAnswer
 
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
+from dotenv import load_dotenv
 
 
 name = "Jarvis"
@@ -60,9 +61,14 @@ lastCommand = 0
 last_hwnd = 0
 last_title = ""
 
+load_dotenv()
+
+client_id = os.getenv("CLIENTID")
+client_secret = os.getenv("CLIENTSECRET")
+
 sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
-    client_id="118bb6656641439e810745e30a67afe5",
-    client_secret="9033e40a91214868b34bbb3fb074b1ff",
+    client_id=client_id,
+    client_secret=client_secret,
     redirect_uri="http://127.0.0.1:8888/callback",
     scope="user-modify-playback-state user-read-playback-state"
 ))
