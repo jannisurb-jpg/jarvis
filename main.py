@@ -632,22 +632,24 @@ cy = 35 + first_ring_radius / 2
 
 first_ring_indicator_inner_radius = 75
 first_ring_indicator_outer_radius = 85
-num_lines = 25
+num_lines = 20
 center_of_jarvis_x = screen_width - 50 - (.5 * capsule_radius)
 center_of_jarvis_y = 50 + capsule_radius/2
 
+dot_radius = 10
+
 #capsule = canvas.create_rectangle(screen_width/2 - capsule_width/2, 50, screen_width/2 + capsule_width/2, capsule_radius, outline="blue", width=3)
-capsule = canvas.create_oval(screen_width - 50 - capsule_radius, 50, screen_width - 50, 50 + capsule_radius, fill="blue")
+capsule = canvas.create_oval(screen_width - 50 - capsule_radius, 50, screen_width - 50, 50 + capsule_radius, fill="#0088ff")
 first_ring = canvas.create_arc(
     cx - first_ring_radius / 2, cy - first_ring_radius / 2,
     cx + first_ring_radius / 2, cy + first_ring_radius / 2,
-    start=0, extent=180, style=tk.ARC, outline="blue", width=3
+    start=0, extent=180, style=tk.ARC, outline="#0088ff", width=3
 )
 
 second_ring = canvas.create_arc(
     cx - second_ring_radius / 2, cy - second_ring_radius / 2,
     cx + second_ring_radius / 2, cy + second_ring_radius / 2,
-    start=0, extent=300, style=tk.ARC, outline="cyan", width=3
+    start=0, extent=300, style=tk.ARC, outline="#00ccff", width=3
 )
 
 first_ring_indicators = []
@@ -658,16 +660,29 @@ for i in range(num_lines):
     y1 = center_of_jarvis_y + first_ring_indicator_inner_radius * math.sin(angle)
     x2 = center_of_jarvis_x + first_ring_indicator_outer_radius * math.cos(angle)
     y2 = center_of_jarvis_y + first_ring_indicator_outer_radius * math.sin(angle)
-    first_ring_indicator = canvas.create_line(x1, y1, x2, y2, fill="blue", width=2)
+    if i == num_lines * .25 or i == num_lines *.5 or i == num_lines *.75 or i == num_lines:
+        first_ring_indicator = canvas.create_line(x1, y1, x2, y2, fill="#00ccff", width=5)
+    else:
+        first_ring_indicator = canvas.create_line(x1, y1, x2, y2, fill="#00aaff", width=2)
     first_ring_indicators.append(first_ring_indicator)
 
-"""#Wave
-points = []
-for x in range(int(screen_width/2 - capsule_radius/2), int(screen_width/2 + capsule_radius/2)):
-    y = 75 + math.sin(x * .05) * 10
-    points.append((x, y))
 
-wave = canvas.create_line(points, fill="blue", width=2)"""
+center_dot = canvas.create_oval(
+    center_of_jarvis_x - dot_radius,
+    center_of_jarvis_y - dot_radius,
+    center_of_jarvis_x + dot_radius,
+    center_of_jarvis_y + dot_radius,
+    fill="white"
+)
+
+center_outline = canvas.create_oval(
+    center_of_jarvis_x - capsule_radius/2,
+    center_of_jarvis_y - capsule_radius/2,
+    center_of_jarvis_x + capsule_radius/2,
+    center_of_jarvis_y + capsule_radius/2,
+    outline="#00ccff",
+    width=3
+)
 
 reset_pending = False
 reset_time    = 0
@@ -687,21 +702,22 @@ def show_status(text):
 offset = 0
 
 def ChangeInnerCircle(color):
-    canvas.itemconfig(capsule, fill=color)
+    canvas.itemconfig(capsule)
 
 def ChangeFirstRing(current_ring_angle, speed_of_ring, color):
-    canvas.itemconfig(first_ring, start=current_ring_angle + speed_of_ring, outline= color)
+    canvas.itemconfig(first_ring, start=current_ring_angle + speed_of_ring)
 
-def ChangeFirstRingIndicators(volume, index):
+def ChangeFirstRingIndicators(volume, index, rotation):
     volume_multiplier = max(1, min(volume * 100, 1.1))
 
-    angle = math.radians(index * (360 / num_lines))
-    x1 = center_of_jarvis_x + first_ring_indicator_inner_radius * math.cos(angle)
-    y1 = center_of_jarvis_y + first_ring_indicator_inner_radius * math.sin(angle)
-    x2 = center_of_jarvis_x + (first_ring_indicator_outer_radius * volume_multiplier) * math.cos(angle)
-    y2 = center_of_jarvis_y + (first_ring_indicator_outer_radius * volume_multiplier) * math.sin(angle)
+    for i in range(num_lines):
+        angle = math.radians(i * (360 / num_lines) + rotation)
+        x1 = center_of_jarvis_x + first_ring_indicator_inner_radius * math.cos(angle)
+        y1 = center_of_jarvis_y + first_ring_indicator_inner_radius * math.sin(angle)
+        x2 = center_of_jarvis_x + (first_ring_indicator_outer_radius * volume_multiplier) * math.cos(angle)
+        y2 = center_of_jarvis_y + (first_ring_indicator_outer_radius * volume_multiplier) * math.sin(angle)
 
-    canvas.coords(first_ring_indicators[index], x1, y1, x2, y2)
+        canvas.coords(first_ring_indicators[i], x1, y1, x2, y2)
 
 def ChangeSecondRing(current_ring_angle, speed_of_ring):
     canvas.itemconfig(second_ring, start=current_ring_angle + speed_of_ring)
@@ -1145,6 +1161,7 @@ def waveAnim():
     if tts_volume_level < .2:
         direction_while_talking_jarvis *= -1
 
+    current_ring_angle_outer = float(canvas.itemcget(second_ring, "start"))
     if not isSpeaking:
         if current_volume > .004:
             current_jarvis_mode = "listening"
@@ -1158,25 +1175,25 @@ def waveAnim():
         if last_time_talking_delta.total_seconds() > sleepingInterval:
             current_jarvis_mode = "sleeping"
     else:
-        current_ring_angle = float(canvas.itemcget(second_ring, "start"))
-        ChangeSecondRing(current_ring_angle, tts_volume_level * 50 * direction_while_talking_jarvis)
+        ChangeSecondRing(current_ring_angle_outer, tts_volume_level * 50 * direction_while_talking_jarvis)
         current_jarvis_mode = "speaking"
 
     current_ring_angle = float(canvas.itemcget(first_ring, "start"))
     if current_jarvis_mode == "idle":
         color = "blue"
 
-        ChangeFirstRing(current_ring_angle, 0, color)
+        ChangeFirstRing(current_ring_angle, 3, color)
+        ChangeSecondRing(current_ring_angle_outer, -.5)
         ChangeInnerCircle(color)
 
-        ChangeFirstRingIndicators(current_volume, activeIndexForInnerIndicator)
+        ChangeFirstRingIndicators(current_volume, activeIndexForInnerIndicator, -current_ring_angle_outer)
     elif current_jarvis_mode == "listening":
         color = "blue"
 
         ChangeFirstRing(current_ring_angle, current_volume * 1000 * direction_while_talking, "blue")
         ChangeInnerCircle(color)
 
-        ChangeFirstRingIndicators(current_volume, activeIndexForInnerIndicator)
+        ChangeFirstRingIndicators(current_volume, activeIndexForInnerIndicator, -current_ring_angle_outer)
         
     elif current_jarvis_mode == "speaking":
         color = "blue"
@@ -1184,41 +1201,15 @@ def waveAnim():
         ChangeFirstRing(current_ring_angle, 0, "blue")
         ChangeInnerCircle(color)
 
-        ChangeFirstRingIndicators(current_volume, activeIndexForInnerIndicator)
+        ChangeFirstRingIndicators(current_volume, activeIndexForInnerIndicator, -current_ring_angle_outer)
     elif current_jarvis_mode == "sleeping":
         color = "blue"
 
         ChangeFirstRing(current_ring_angle, 0, "blue")
         ChangeInnerCircle(color)
 
-        ChangeFirstRingIndicators(current_volume, activeIndexForInnerIndicator)
+        ChangeFirstRingIndicators(current_volume, activeIndexForInnerIndicator, -current_ring_angle_outer)
 
-    """pts = []
-    
-    start_x = int(screen_width/2 - capsule_radius/2)
-    end_x = int(screen_width/2 + capsule_radius/2)
-    total = end_x - start_x
-
-    for i, x in enumerate(range(start_x, end_x)):
-        # Fade: 0 an den Rändern, 1 in der Mitte
-        t = i / total
-        fade = math.sin(t * math.pi)  # 0 → 1 → 0
-        
-        amplitude = 5 + current_volume * 200
-        frequenzy = .05 + current_volume * 10
-        if current_jarvis_mode == "idle":
-            amplitude = 5
-            frequenzy = .05
-            
-        if isSpeaking:
-            amplitude = 5 + tts_volume_level * 30
-            frequenzy = .05 + tts_volume_level
-
-        y = 75 + math.sin((x + offset) * frequenzy) * amplitude * fade
-        pts += [x, y]
-
-    offset += offset_speed
-    canvas.coords(wave, pts)"""
     root.after(30, waveAnim)
 
 waveAnim()  # einmal starten, dann läuft es von alleine
