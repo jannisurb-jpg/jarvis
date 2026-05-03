@@ -50,19 +50,19 @@ def get_news_command():
 
     starting_time = datetime.now()
     with requests.post(
-        "http://localhost:11434/api/generate",
+        "http://localhost:11434/api/chat",
         json={
-            "model": "phi3",
-            "prompt": prompt_content,
-            "stream": True
+            "model": "phi3:mini",
+            "messages": [{"role": "user", "content": prompt_content}],
+            "stream": True,
+            "keep_alive": "5m"
         },
         stream=True
     ) as response:
-
         for line in response.iter_lines():
             if line:
                 chunk = json.loads(line.decode("utf-8"))
-                yield chunk.get("response", "")
+                yield chunk.get("message", {}).get("content", "")
     print(f"Zeit für die Generierung: {datetime.now() - starting_time}")
 
 session = requests.Session()

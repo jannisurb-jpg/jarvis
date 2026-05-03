@@ -87,6 +87,10 @@ clap_state = {
 
 oldVolume = {}
 
+activeIndexForInnerIndicator = 0
+direction_while_talking = 1
+direction_while_talking_jarvis = 1
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Monitor Setup
 # ─────────────────────────────────────────────────────────────────────────────
@@ -619,18 +623,51 @@ canvas.pack(fill="both", expand=True)
 screen_width = root.winfo_screenwidth()
 screen_height = root.winfo_screenheight()
 
-capsule_width = 400
-capsule_height = 100
+capsule_radius = 100
 
-capsule = canvas.create_rectangle(screen_width/2 - capsule_width/2, 50, screen_width/2 + capsule_width/2, capsule_height, outline="blue", width=3)
+first_ring_radius = 130
+second_ring_radius = 195
+cx = screen_width - 35 - first_ring_radius / 2
+cy = 35 + first_ring_radius / 2
 
-#Wave
+first_ring_indicator_inner_radius = 75
+first_ring_indicator_outer_radius = 85
+num_lines = 25
+center_of_jarvis_x = screen_width - 50 - (.5 * capsule_radius)
+center_of_jarvis_y = 50 + capsule_radius/2
+
+#capsule = canvas.create_rectangle(screen_width/2 - capsule_width/2, 50, screen_width/2 + capsule_width/2, capsule_radius, outline="blue", width=3)
+capsule = canvas.create_oval(screen_width - 50 - capsule_radius, 50, screen_width - 50, 50 + capsule_radius, fill="blue")
+first_ring = canvas.create_arc(
+    cx - first_ring_radius / 2, cy - first_ring_radius / 2,
+    cx + first_ring_radius / 2, cy + first_ring_radius / 2,
+    start=0, extent=180, style=tk.ARC, outline="blue", width=3
+)
+
+second_ring = canvas.create_arc(
+    cx - second_ring_radius / 2, cy - second_ring_radius / 2,
+    cx + second_ring_radius / 2, cy + second_ring_radius / 2,
+    start=0, extent=300, style=tk.ARC, outline="cyan", width=3
+)
+
+first_ring_indicators = []
+
+for i in range(num_lines):
+    angle = math.radians(i * (360 / num_lines))
+    x1 = center_of_jarvis_x + first_ring_indicator_inner_radius * math.cos(angle)
+    y1 = center_of_jarvis_y + first_ring_indicator_inner_radius * math.sin(angle)
+    x2 = center_of_jarvis_x + first_ring_indicator_outer_radius * math.cos(angle)
+    y2 = center_of_jarvis_y + first_ring_indicator_outer_radius * math.sin(angle)
+    first_ring_indicator = canvas.create_line(x1, y1, x2, y2, fill="blue", width=2)
+    first_ring_indicators.append(first_ring_indicator)
+
+"""#Wave
 points = []
-for x in range(int(screen_width/2 - capsule_width/2), int(screen_width/2 + capsule_width/2)):
+for x in range(int(screen_width/2 - capsule_radius/2), int(screen_width/2 + capsule_radius/2)):
     y = 75 + math.sin(x * .05) * 10
     points.append((x, y))
 
-wave = canvas.create_line(points, fill="blue", width=2)
+wave = canvas.create_line(points, fill="blue", width=2)"""
 
 reset_pending = False
 reset_time    = 0
@@ -648,6 +685,26 @@ def show_status(text):
 # ─────────────────────────────────────────────────────────────────────────────
 
 offset = 0
+
+def ChangeInnerCircle(color):
+    canvas.itemconfig(capsule, fill=color)
+
+def ChangeFirstRing(current_ring_angle, speed_of_ring, color):
+    canvas.itemconfig(first_ring, start=current_ring_angle + speed_of_ring, outline= color)
+
+def ChangeFirstRingIndicators(volume, index):
+    volume_multiplier = max(1, min(volume * 100, 1.1))
+
+    angle = math.radians(index * (360 / num_lines))
+    x1 = center_of_jarvis_x + first_ring_indicator_inner_radius * math.cos(angle)
+    y1 = center_of_jarvis_y + first_ring_indicator_inner_radius * math.sin(angle)
+    x2 = center_of_jarvis_x + (first_ring_indicator_outer_radius * volume_multiplier) * math.cos(angle)
+    y2 = center_of_jarvis_y + (first_ring_indicator_outer_radius * volume_multiplier) * math.sin(angle)
+
+    canvas.coords(first_ring_indicators[index], x1, y1, x2, y2)
+
+def ChangeSecondRing(current_ring_angle, speed_of_ring):
+    canvas.itemconfig(second_ring, start=current_ring_angle + speed_of_ring)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Command-HANDLER
@@ -794,6 +851,7 @@ def handle_news(command):
     buffer     = ""
     last_flush = time.time()
 
+    print("[NEWS] Starte Generator...")
     for token in get_news_command():
         print(token, end="", flush=True)
         buffer += token
@@ -804,9 +862,11 @@ def handle_news(command):
             buffer     = ""
             last_flush = time.time()
 
+    print(f"[NEWS] Restbuffer: '{buffer.strip()}'")
     if buffer.strip():
 
         speak_to_me(buffer.strip())
+    print("[NEWS] Fertig.")
 
 def handle_media(command):
     cmd_low = command.lower()
@@ -1067,7 +1127,23 @@ def waveAnim():
     global speed_of_wave
     global current_jarvis_mode
     global last_time_talking_to_jarvis, last_time_talking_delta
-    offset_speed = 5
+    global activeIndexForInnerIndicator
+    global direction_while_talking, direction_while_talking_jarvis
+
+    cursor_x, cursor_y = pyautogui.position()
+    if cursor_x < 1713 and cursor_y > 206:
+        root.attributes("-alpha", 1)
+    elif cursor_x > 1713 and cursor_y < 206:
+        root.attributes("-alpha", .2)
+
+    #calculate index
+    if activeIndexForInnerIndicator <= len(first_ring_indicators) - 2:
+        activeIndexForInnerIndicator += 1
+    else:
+        activeIndexForInnerIndicator = 0
+
+    if tts_volume_level < .2:
+        direction_while_talking_jarvis *= -1
 
     if not isSpeaking:
         if current_volume > .004:
@@ -1076,35 +1152,51 @@ def waveAnim():
         else:
             current_jarvis_mode = "idle"
             offset_speed = 1
+            direction_while_talking = direction_while_talking * -1
 
         last_time_talking_delta = datetime.now() - last_time_talking_to_jarvis
         if last_time_talking_delta.total_seconds() > sleepingInterval:
             current_jarvis_mode = "sleeping"
     else:
+        current_ring_angle = float(canvas.itemcget(second_ring, "start"))
+        ChangeSecondRing(current_ring_angle, tts_volume_level * 50 * direction_while_talking_jarvis)
         current_jarvis_mode = "speaking"
-        offset_speed = 5
 
+    current_ring_angle = float(canvas.itemcget(first_ring, "start"))
     if current_jarvis_mode == "idle":
-        canvas.itemconfig(wave, fill="blue")
-        canvas.coords(capsule, screen_width/2 - capsule_width/2, 50, screen_width/2 + capsule_width/2, capsule_height)
-        canvas.itemconfig(capsule, outline="blue", fill="")
-    elif current_jarvis_mode == "listening":
-        canvas.itemconfig(wave, fill="yellow")
-        canvas.coords(capsule, screen_width/2 - capsule_width/2, 50, screen_width/2 + capsule_width/2, capsule_height)
-        canvas.itemconfig(capsule, outline="yellow", fill="")
-    elif current_jarvis_mode == "speaking":
-        canvas.itemconfig(wave, fill="red")
-        canvas.coords(capsule, screen_width/2 - capsule_width/2, 50, screen_width/2 + capsule_width/2, capsule_height)
-        canvas.itemconfig(capsule, outline="red", fill="")
-    elif current_jarvis_mode == "sleeping":
-        canvas.itemconfig(capsule, outline="green", fill="green")
-        canvas.coords(capsule, screen_width/2 - capsule_height/2 + 25, 50, screen_width/2 + capsule_height/2 - 25, capsule_height)
-        canvas.itemconfig(wave, fill="")
+        color = "blue"
 
-    pts = []
+        ChangeFirstRing(current_ring_angle, 0, color)
+        ChangeInnerCircle(color)
+
+        ChangeFirstRingIndicators(current_volume, activeIndexForInnerIndicator)
+    elif current_jarvis_mode == "listening":
+        color = "blue"
+
+        ChangeFirstRing(current_ring_angle, current_volume * 1000 * direction_while_talking, "blue")
+        ChangeInnerCircle(color)
+
+        ChangeFirstRingIndicators(current_volume, activeIndexForInnerIndicator)
+        
+    elif current_jarvis_mode == "speaking":
+        color = "blue"
+
+        ChangeFirstRing(current_ring_angle, 0, "blue")
+        ChangeInnerCircle(color)
+
+        ChangeFirstRingIndicators(current_volume, activeIndexForInnerIndicator)
+    elif current_jarvis_mode == "sleeping":
+        color = "blue"
+
+        ChangeFirstRing(current_ring_angle, 0, "blue")
+        ChangeInnerCircle(color)
+
+        ChangeFirstRingIndicators(current_volume, activeIndexForInnerIndicator)
+
+    """pts = []
     
-    start_x = int(screen_width/2 - capsule_width/2)
-    end_x = int(screen_width/2 + capsule_width/2)
+    start_x = int(screen_width/2 - capsule_radius/2)
+    end_x = int(screen_width/2 + capsule_radius/2)
     total = end_x - start_x
 
     for i, x in enumerate(range(start_x, end_x)):
@@ -1126,7 +1218,7 @@ def waveAnim():
         pts += [x, y]
 
     offset += offset_speed
-    canvas.coords(wave, pts)
+    canvas.coords(wave, pts)"""
     root.after(30, waveAnim)
 
 waveAnim()  # einmal starten, dann läuft es von alleine
