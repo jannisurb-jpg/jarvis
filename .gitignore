@@ -1,0 +1,7 @@
+vosk-model-de-0.21/
+vosk-model-small-de-0.15/
+vosk-model-small-en-us-0.15/
+.cache
+__pycache__
+log.txt
+output.txt
