@@ -35,6 +35,17 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from dotenv import load_dotenv
 
+import requests
+
+def ensure_ollama():
+    try:
+        requests.get("http://localhost:11434")
+    except:
+        process = subprocess.Popen(["ollama", "serve"])
+        time.sleep(2)
+
+ensure_ollama()
+
 
 name = "Jarvis"
 not_wanted_wake_words = ["ja"]
